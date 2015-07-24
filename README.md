@@ -1,13 +1,22 @@
 pdirector
 =========
 
-This simple TCP port proxy helps exposing services bound to localhost or other unaccessible network interfaces.
+This simple TCP port proxy redirects and forwards TCP traffic.
 
 Usage
 -----
+```
+Usage: pdirector [arguments...]
 
-	pdirector <local-port> <proxy-port> [<proxy-address>]
-		local-port    - An opened port usually bound to the localhost
-		proxy-port    - A proxy port for a localhost connection, which is remotely available
-		proxy-address - A specific ip or named address where proxy-port should be opened.
-	                	Default - 0.0.0.0
+  -fwd-host="localhost": An ip or hostname with forwarded port
+  -fwd-port="": An opened port to forward traffic to
+  -proxy-host="localhost": A local ip or named address for a proxy-port
+  -proxy-port="": A proxy port for a forwarded connection
+```
+Example
+-------
+To create a fowrwarding proxy on localhost:8080 to google.com web servce
+
+```
+$ pdirector -fwd-host=www.google.com -fwd-port 80 -proxy-port 8080
+```
