@@ -1,4 +1,4 @@
-// Port Director - a small TCP proxy to redirect ports openned on local hosts, making them accessible remotely
+// Port Director - a small TCP proxy for redirect and port forwarding
 package main
 
 import (
@@ -10,45 +10,28 @@ import (
 	"os"
 )
 
-const usage = `
-
-usage: pdirector <local-port> <proxy-port> [<proxy-address>]
-
-	local-port    - An opened port usually bounded to the localhost
-	proxy-port    - A proxy port for a localhost connection, which is remotely available
-	proxy-address - A specific ip or named address where proxy-port should be opened.
-	                Default - 0.0.0.0
-`
-
-var PROGNAME = "pdirector"
-
-func init() {
-}
+const progname = "pdirector"
 
 func main() {
-	var localPort, proxyPort, proxyHost string
+	var (
+		fwdHost = flag.String("fwd-host", "localhost", "An ip or hostname with forwarded port")
+		fwdPort = flag.String("fwd-port", "", "An opened port to forward traffic to")
+		proxyHost = flag.String("proxy-host", "0.0.0.0", "A local ip or named address for a proxy-port")
+		proxyPort = flag.String("proxy-port", "", "A proxy port for a forwarded connection")
+	)
 
 	// Parse command line flags and arguments
 	flag.Parse()
 
 	// Check required command line args
-	switch len(flag.Args()) {
-	case 3:
-		// Read proxy address
-		proxyHost = flag.Arg(2)
-		fallthrough
-	case 2:
-		// Read local and proxy ports
-		localPort, proxyPort = flag.Arg(0), flag.Arg(1)
-
-	default:
-		fmt.Fprintf(os.Stderr, "%s ERROR: Must provide both local and proxy ports", PROGNAME)
-		fmt.Fprintln(os.Stderr, usage)
+	if *fwdPort == "" || *proxyPort == "" {
+		fmt.Fprintf(os.Stderr, "%s ERROR: Must provide both forward and proxy ports\n", progname)
+		flag.PrintDefaults()
 		return
 	}
 
 	// Start proxy listener
-	proxy, err := proxyListen(proxyHost, proxyPort)
+	proxy, err := proxyListen(*proxyHost, *proxyPort)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,7 +46,7 @@ func main() {
 		}
 
 		// Handle connection
-		go handleProxyRequest(c, localPort)
+		go handleProxyRequest(c, *fwdHost, *fwdPort)
 	}
 }
 
@@ -72,11 +55,11 @@ func proxyListen(host, port string) (net.Listener, error) {
 	return net.Listen("tcp", addr)
 }
 
-func handleProxyRequest(conn net.Conn, localPort string) {
+func handleProxyRequest(conn net.Conn, host, port string) {
 	defer conn.Close() // Always remember to close connection
 
 	// Open connection to the local service and remember to close it
-	lconn, err := localConnect(localPort)
+	lconn, err := fwdConnect(host, port)
 	if err != nil {
 		// Report error to the remote client first
 		reportErrors(conn, err)
@@ -91,13 +74,13 @@ func handleProxyRequest(conn net.Conn, localPort string) {
 	}
 }
 
-func localConnect(port string) (net.Conn, error) {
-	return net.Dial("tcp", "localhost:"+port)
+func fwdConnect(host, port string) (net.Conn, error) {
+	return net.Dial("tcp", host+":"+port)
 }
 
 func reportErrors(client net.Conn, err error) {
 	// Report error to the remote client first
-	errMsg := fmt.Sprintf("%s ERROR: %s\n", PROGNAME, err)
+	errMsg := fmt.Sprintf("%s ERROR: %s\n", progname, err)
 	// Also, put it in the server log
 	fmt.Fprintln(client, errMsg)
 	log.Println(errMsg)
