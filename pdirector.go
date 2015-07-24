@@ -12,11 +12,20 @@ import (
 
 const progname = "pdirector"
 
+func init() {
+	// Custom usage
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "\nUsage: %s [arguments...]\n\n", progname)
+		flag.PrintDefaults()
+		fmt.Fprintln(os.Stderr, "")
+	}
+}
+
 func main() {
 	var (
 		fwdHost = flag.String("fwd-host", "localhost", "An ip or hostname with forwarded port")
 		fwdPort = flag.String("fwd-port", "", "An opened port to forward traffic to")
-		proxyHost = flag.String("proxy-host", "0.0.0.0", "A local ip or named address for a proxy-port")
+		proxyHost = flag.String("proxy-host", "localhost", "A local ip or named address for a proxy-port")
 		proxyPort = flag.String("proxy-port", "", "A proxy port for a forwarded connection")
 	)
 
@@ -25,8 +34,8 @@ func main() {
 
 	// Check required command line args
 	if *fwdPort == "" || *proxyPort == "" {
-		fmt.Fprintf(os.Stderr, "%s ERROR: Must provide both forward and proxy ports\n", progname)
-		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\n%s ERROR: Must at least provide forward and proxy ports\n", progname)
+		flag.Usage()
 		return
 	}
 
